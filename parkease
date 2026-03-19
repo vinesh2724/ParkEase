@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ParkEase</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css"/>
+  <!-- Leaflet JS -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { background: #f5f5f5; color: #333; }
+
+    .screen { display: none; min-height: 100vh; padding: 20px; }
+    .screen.active { display: block; }
+
+    .btn { background: #2c7be5; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; margin-top: 10px; }
+    .btn:hover { background: #1a5db5; }
+    .btn-green { background: #28a745; }
+    .btn-red { background: #dc3545; }
+    .btn-outline { background: white; color: #2c7be5; border: 2px solid #2c7be5; }
+
+    input, select { width: 100%; padding: 10px; margin-top: 6px; margin-bottom: 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
+    label { font-weight: bold; font-size: 14px; color: #555; }
+
+    .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+
+    .topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .topbar h2 { font-size: 20px; }
+
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+    .badge-green { background: #d4edda; color: #155724; }
+    .badge-blue { background: #cce5ff; color: #004085; }
+    .badge-red { background: #f8d7da; color: #721c24; }
+
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #ddd; display: flex; }
+    .nav-btn { flex: 1; padding: 12px; text-align: center; cursor: pointer; font-size: 12px; border: none; background: transparent; color: #888; }
+    .nav-btn.active { color: #2c7be5; font-weight: bold; }
+
+    #splash { background: #2c7be5; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    #splash.active { display: flex; }
+    #splash h1 { font-size: 42px; margin-bottom: 10px; }
+    #splash p { font-size: 16px; margin-bottom: 30px; opacity: 0.9; }
+    #splash .btn { background: white; color: #2c7be5; width: auto; padding: 14px 40px; font-size: 17px; }
+
+    .role-toggle { display: flex; gap: 10px; margin-bottom: 20px; }
+    .role-btn { flex: 1; padding: 10px; border: 2px solid #2c7be5; background: white; color: #2c7be5; border-radius: 8px; font-size: 15px; cursor: pointer; font-weight: bold; }
+    .role-btn.active { background: #2c7be5; color: white; }
+
+    .spot-row { display: flex; justify-content: space-between; align-items: center; }
+    .spot-price { font-size: 18px; font-weight: bold; color: #2c7be5; }
+
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+    .stat-box { background: #f0f4ff; border-radius: 8px; padding: 12px; text-align: center; }
+    .stat-box b { font-size: 18px; display: block; }
+    .stat-box small { color: #888; }
+
+    .time-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
+    .time-slot { padding: 10px; text-align: center; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .time-slot.active { background: #2c7be5; color: white; border-color: #2c7be5; }
+    .time-slot.taken { background: #eee; color: #aaa; cursor: not-allowed; }
+
+    .dur-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px; }
+    .dur-btn { padding: 10px; text-align: center; border: 1px solid #ccc; border-radius: 8px; cursor: pointer; font-size: 13px; background: white; }
+    .dur-btn.active { background: #2c7be5; color: white; border-color: #2c7be5; }
+
+    .summary { background: #f9f9f9; border-radius: 10px; padding: 15px; }
+    .sum-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+    .sum-row:last-child { border: none; font-weight: bold; font-size: 16px; }
+
+    #confirm { text-align: center; padding-top: 60px; }
+    #confirm .icon { font-size: 70px; margin-bottom: 15px; }
+
+    .earn-card { background: #2c7be5; color: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .earn-card h1 { font-size: 36px; }
+    .earn-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    .earn-mini div { background: rgba(255,255,255,0.2); border-radius: 8px; padding: 10px; text-align: center; }
+    .earn-mini b { font-size: 20px; display: block; }
+
+    .toggle { width: 44px; height: 24px; background: #ccc; border-radius: 50px; position: relative; cursor: pointer; border: none; transition: background 0.2s; }
+    .toggle.on { background: #28a745; }
+    .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: white; border-radius: 50%; transition: transform 0.2s; }
+    .toggle.on::after { transform: translateX(20px); }
+
+    .upload-zone { border: 2px dashed #2c7be5; border-radius: 10px; padding: 30px; text-align: center; margin-bottom: 15px; cursor: pointer; color: #2c7be5; }
+
+    .v-row { display: flex; gap: 8px; margin-bottom: 15px; }
+    .v-btn { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 8px; text-align: center; cursor: pointer; font-size: 14px; background: white; }
+    .v-btn.active { border-color: #2c7be5; color: #2c7be5; background: #f0f4ff; font-weight: bold; }
+
+    .pay-option { background: white; border: 2px solid #eee; border-radius: 10px; padding: 12px 15px; margin-bottom: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+    .pay-option.active { border-color: #2c7be5; background: #f0f4ff; }
+
+    .page-pad { padding-bottom: 80px; }
+    .link { color: #2c7be5; cursor: pointer; text-decoration: underline; }
+    .back-link { color: #888; cursor: pointer; margin-bottom: 20px; display: block; }
+    .divider { height: 1px; background: #eee; margin: 15px 0; }
+    .tag { display: inline-block; background: #eee; border-radius: 20px; padding: 3px 10px; font-size: 12px; margin: 2px; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+    /* MAP styles */
+    #map {
+      height: 250px;        /* map height */
+      border-radius: 12px;  /* rounded corners */
+      margin-bottom: 15px;  /* space below map */
+      border: 1px solid #ddd;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+
+<!-- SCREEN 1: SPLASH -->
+<div class="screen active" id="splash">
+  <div style="font-size:60px; margin-bottom:10px;">🅿️</div>
+  <h1>ParkEase</h1>
+  <p>Book parking spots easily in Chennai</p>
+  <button class="btn" onclick="show('login')">Get Started →</button>
+</div>
+
+<!-- SCREEN 2: LOGIN -->
+<div class="screen" id="login">
+  <span class="back-link" onclick="show('splash')">← Back</span>
+  <h2 style="margin-bottom:5px;">Welcome 👋</h2>
+  <p style="color:#888; margin-bottom:20px;">Login or create an account</p>
+  <div class="role-toggle">
+    <button class="role-btn active" id="seekerBtn" onclick="setRole('seeker')">🔍 Seeker</button>
+    <button class="role-btn" id="hostBtn" onclick="setRole('host')">🏠 Host</button>
+  </div>
+  <label>Phone Number or Email</label>
+  <input type="text" id="emailInput" placeholder="Enter phone or email"/>
+  <label>Password</label>
+  <input type="password" id="passInput" placeholder="Enter password"/>
+  <button class="btn" onclick="login()">Sign In</button>
+  <button class="btn btn-outline" onclick="login()">Register New Account</button>
+  <p style="text-align:center; margin-top:15px; color:#888; font-size:14px;">
+    Seeker = find & book parking | Host = earn by sharing your spot
+  </p>
+</div>
+
+<!-- SCREEN 3: SEEKER HOME -->
+<div class="screen page-pad" id="home">
+  <div class="topbar">
+    <div><p style="color:#888; font-size:13px;">Good morning 👋</p><h2>Find Parking</h2></div>
+    <button class="btn" style="width:auto; margin:0; padding:8px 14px; font-size:13px;" onclick="show('login')">Logout</button>
+  </div>
+
+  <div style="display:flex; gap:8px; margin-bottom:15px;">
+    <input type="text" placeholder="🔍  Search area or street..." style="margin:0; flex:1;"/>
+    <button class="btn" style="width:auto; margin:0; padding:10px 16px;">Search</button>
+  </div>
+
+  <!-- MAP IS HERE -->
+  <div id="map"></div>
+
+  <div style="display:flex; gap:8px; margin-bottom:15px; flex-wrap:wrap;">
+    <button class="dur-btn active" onclick="setFilter(this)">All</button>
+    <button class="dur-btn" onclick="setFilter(this)">🚗 Car</button>
+    <button class="dur-btn" onclick="setFilter(this)">🏍️ Bike</button>
+    <button class="dur-btn" onclick="setFilter(this)">Under ₹20</button>
+  </div>
+
+  <h3 style="margin-bottom:12px;">Available Spots Near You</h3>
+
+  <div class="card" onclick="show('detail')" style="cursor:pointer;">
+    <div class="spot-row">
+      <div>
+        <b>🏠 Ravi's Home Spot</b>
+        <p style="color:#888; font-size:13px; margin-top:4px;">📍 T. Nagar, Chennai</p>
+        <div style="margin-top:6px;"><span class="tag">🚗 Car</span><span class="tag">Covered</span><span class="tag">CCTV</span></div>
+      </div>
+      <div style="text-align:right;">
+        <div class="spot-price">₹15/hr</div>
+        <span class="badge badge-green">Available</span>
+        <p style="font-size:12px; color:#888; margin-top:4px;">⭐ 4.7</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" onclick="show('detail')" style="cursor:pointer;">
+    <div class="spot-row">
+      <div>
+        <b>🏡 Priya's Driveway</b>
+        <p style="color:#888; font-size:13px; margin-top:4px;">📍 Nungambakkam, Chennai</p>
+        <div style="margin-top:6px;"><span class="tag">🏍️ Bike</span><span class="tag">Open</span></div>
+      </div>
+      <div style="text-align:right;">
+        <div class="spot-price">₹10/hr</div>
+        <span class="badge badge-green">Available</span>
+        <p style="font-size:12px; color:#888; margin-top:4px;">⭐ 4.4</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" onclick="show('detail')" style="cursor:pointer;">
+    <div class="spot-row">
+      <div>
+        <b>🏘️ Kumar's Garage</b>
+        <p style="color:#888; font-size:13px; margin-top:4px;">📍 Mylapore, Chennai</p>
+        <div style="margin-top:6px;"><span class="tag">🚗 Car</span><span class="tag">🏍️ Bike</span></div>
+      </div>
+      <div style="text-align:right;">
+        <div class="spot-price">₹12/hr</div>
+        <span class="badge badge-green">Available</span>
+        <p style="font-size:12px; color:#888; margin-top:4px;">⭐ 4.5</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <button class="nav-btn active">🏠 Home</button>
+    <button class="nav-btn" onclick="show('mybookings')">📋 Bookings</button>
+    <button class="nav-btn" onclick="show('login')">👤 Profile</button>
+  </div>
+</div>
+
+<!-- SCREEN 4: SPOT DETAIL -->
+<div class="screen page-pad" id="detail">
+  <span class="back-link" onclick="show('home')">← Back to Search</span>
+  <div style="font-size:80px; text-align:center; background:#e8f4ff; border-radius:12px; padding:20px; margin-bottom:15px;">🏠</div>
+  <div class="flex-between" style="margin-bottom:5px;">
+    <h2>Ravi's Home Spot</h2>
+    <span class="badge badge-green">● Available</span>
+  </div>
+  <p style="color:#888; margin-bottom:15px;">📍 12, Gandhi Street, T. Nagar, Chennai</p>
+  <div class="stats">
+    <div class="stat-box"><b>₹15/hr</b><small>Price</small></div>
+    <div class="stat-box"><b style="color:green;">3 Free</b><small>Slots</small></div>
+    <div class="stat-box"><b>🚗 Car</b><small>Vehicle</small></div>
+    <div class="stat-box"><b>⭐ 4.7</b><small>Rating</small></div>
+  </div>
+  <div class="card">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:45px;height:45px;background:#2c7be5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;">👨</div>
+      <div><b>Ravi Kumar</b><br/><small style="color:#888;">✅ Verified Host · 56 bookings</small></div>
+    </div>
+  </div>
+  <p style="color:#888; font-size:14px; margin-bottom:20px;">🕐 Open: 7:00 AM – 10:00 PM<br/>🔒 CCTV Security · 💡 Covered Parking</p>
+  <div class="flex-between">
+    <div><b style="font-size:20px; color:#2c7be5;">₹15/hr</b><br/><small style="color:#888;">Free cancellation</small></div>
+    <button class="btn" style="width:auto; padding:12px 30px;" onclick="show('booking')">Book Now →</button>
+  </div>
+</div>
+
+<!-- SCREEN 5: BOOKING -->
+<div class="screen page-pad" id="booking">
+  <div class="topbar">
+    <button class="btn btn-outline" style="width:auto;margin:0;padding:8px 14px;" onclick="show('detail')">← Back</button>
+    <h2>Book Slot</h2>
+  </div>
+  <label>Select Date</label>
+  <input type="date" id="dateInput"/>
+  <label>Select Time</label>
+  <div class="time-grid">
+    <div class="time-slot taken">9 AM</div>
+    <div class="time-slot taken">10 AM</div>
+    <div class="time-slot active" onclick="setTime(this)">11 AM</div>
+    <div class="time-slot" onclick="setTime(this)">12 PM</div>
+    <div class="time-slot" onclick="setTime(this)">1 PM</div>
+    <div class="time-slot" onclick="setTime(this)">2 PM</div>
+  </div>
+  <label>Duration</label>
+  <div class="dur-grid">
+    <div class="dur-btn" onclick="setDur(this)">1 hr</div>
+    <div class="dur-btn active" onclick="setDur(this)">2 hrs</div>
+    <div class="dur-btn" onclick="setDur(this)">3 hrs</div>
+    <div class="dur-btn" onclick="setDur(this)">Full Day</div>
+  </div>
+  <label>Payment Method</label>
+  <div class="pay-option active" onclick="setPay(this)">
+    <span style="font-size:24px;">📱</span>
+    <div><b>UPI</b><br/><small style="color:#888;">GPay, PhonePe, Paytm</small></div>
+  </div>
+  <div class="pay-option" onclick="setPay(this)">
+    <span style="font-size:24px;">💵</span>
+    <div><b>Cash</b><br/><small style="color:#888;">Pay at the spot</small></div>
+  </div>
+  <div class="divider"></div>
+  <div class="summary">
+    <div class="sum-row"><span>₹15 × 2 hrs</span><span>₹30</span></div>
+    <div class="sum-row"><span>Service fee</span><span>₹3</span></div>
+    <div class="sum-row"><span>Total</span><span style="color:#2c7be5;">₹33</span></div>
+  </div>
+  <button class="btn btn-green" style="margin-top:15px;" onclick="show('confirm')">✅ Confirm Booking</button>
+</div>
+
+<!-- SCREEN 6: CONFIRMATION -->
+<div class="screen" id="confirm">
+  <div class="icon">✅</div>
+  <h2>Booking Confirmed!</h2>
+  <p style="color:#888; margin:10px 0 25px;">Your parking slot is successfully booked</p>
+  <div class="card" style="text-align:left; max-width:350px; margin:0 auto 20px;">
+    <div class="sum-row"><span style="color:#888;">Location</span><b>Ravi's Home Spot</b></div>
+    <div class="sum-row"><span style="color:#888;">Address</span><b>T. Nagar, Chennai</b></div>
+    <div class="sum-row"><span style="color:#888;">Time</span><b>11 AM – 1 PM</b></div>
+    <div class="sum-row"><span style="color:#888;">Vehicle</span><b>🚗 Car</b></div>
+    <div class="sum-row"><span style="color:#888;">Payment</span><b>UPI ✓</b></div>
+    <div class="sum-row"><span style="color:#888;">Total Paid</span><b style="color:#2c7be5;">₹33</b></div>
+  </div>
+  <p style="color:#888; font-size:14px; margin-bottom:20px;">Booking ID: <b style="color:#2c7be5;">PKE-1042-CH</b></p>
+  <button class="btn" onclick="show('home')">Back to Home</button>
+</div>
+
+<!-- SCREEN 7: MY BOOKINGS -->
+<div class="screen page-pad" id="mybookings">
+  <div class="topbar"><h2>My Bookings</h2></div>
+  <div class="card">
+    <div class="flex-between" style="margin-bottom:8px;">
+      <b>Ravi's Home Spot</b><span class="badge badge-blue">Upcoming</span>
+    </div>
+    <p style="color:#888; font-size:13px;">📍 T. Nagar · 11AM–1PM · 🚗 Car · ₹33</p>
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button class="btn" style="padding:8px;" onclick="show('confirm')">View Details</button>
+      <button class="btn btn-red" style="padding:8px;">Cancel</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="flex-between" style="margin-bottom:8px;">
+      <b>Priya's Driveway</b><span class="badge badge-green">Completed</span>
+    </div>
+    <p style="color:#888; font-size:13px;">📍 Nungambakkam · 2PM–4PM · 🏍️ Bike · ₹20</p>
+    <div style="display:flex; gap:8px; margin-top:10px;">
+      <button class="btn btn-outline" style="padding:8px;">Book Again</button>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-btn" onclick="show('home')">🏠 Home</button>
+    <button class="nav-btn active">📋 Bookings</button>
+    <button class="nav-btn" onclick="show('login')">👤 Profile</button>
+  </div>
+</div>
+
+<!-- SCREEN 8: HOST DASHBOARD -->
+<div class="screen page-pad" id="host">
+  <div class="topbar">
+    <div><p style="color:#888;font-size:13px;">Host Mode</p><h2>My Dashboard</h2></div>
+    <button class="btn btn-outline" style="width:auto;margin:0;padding:8px 14px;font-size:13px;" onclick="show('login')">Logout</button>
+  </div>
+  <div class="earn-card">
+    <p style="opacity:.8; font-size:13px;">Total Earnings · March 2026</p>
+    <h1>₹4,280</h1>
+    <p style="opacity:.7; font-size:13px;">↑ 12% from last month</p>
+    <div class="earn-mini">
+      <div><b>23</b><small>Bookings</small></div>
+      <div><b>⭐ 4.9</b><small>Avg Rating</small></div>
+    </div>
+  </div>
+  <div class="flex-between" style="margin-bottom:12px;">
+    <h3>My Listings</h3>
+    <button class="btn" style="width:auto;margin:0;padding:8px 14px;font-size:13px;" onclick="show('addlisting')">+ Add New</button>
+  </div>
+  <div class="card">
+    <div class="flex-between">
+      <div><b>🏠 Home Garage</b><p style="color:#888;font-size:13px;margin-top:4px;">₹20/hr · 🚗 Car · 2 slots</p></div>
+      <button class="toggle on" onclick="this.classList.toggle('on')"></button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="flex-between">
+      <div><b>🏡 Side Driveway</b><p style="color:#888;font-size:13px;margin-top:4px;">₹12/hr · 🏍️ Bike · 3 slots</p></div>
+      <button class="toggle" onclick="this.classList.toggle('on')"></button>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="nav-btn active">📊 Dashboard</button>
+    <button class="nav-btn" onclick="show('addlisting')">➕ Add Listing</button>
+    <button class="nav-btn" onclick="show('login')">👤 Profile</button>
+  </div>
+</div>
+
+<!-- SCREEN 9: ADD LISTING -->
+<div class="screen page-pad" id="addlisting">
+  <div class="topbar">
+    <button class="btn btn-outline" style="width:auto;margin:0;padding:8px 14px;" onclick="show('host')">← Back</button>
+    <h2>Add New Listing</h2>
+  </div>
+  <div class="upload-zone">📸<br/><span style="font-size:14px;">Click to upload photos of your parking spot</span></div>
+  <label>Listing Title</label>
+  <input type="text" placeholder="e.g. My Home Garage"/>
+  <label>Full Address</label>
+  <input type="text" placeholder="Street, Area, Chennai"/>
+  <label>Price per Hour (₹)</label>
+  <input type="number" placeholder="e.g. 15"/>
+  <label>Number of Slots Available</label>
+  <input type="number" placeholder="e.g. 2"/>
+  <label>Vehicle Type Accepted</label>
+  <div class="v-row">
+    <div class="v-btn active" onclick="this.classList.toggle('active')">🚗 Car</div>
+    <div class="v-btn" onclick="this.classList.toggle('active')">🏍️ Bike</div>
+    <div class="v-btn" onclick="this.classList.toggle('active')">🚐 Van</div>
+  </div>
+  <label>Available From</label>
+  <input type="time" value="08:00"/>
+  <label>Available To</label>
+  <input type="time" value="22:00"/>
+  <button class="btn btn-green" onclick="show('host')">🚀 Publish Listing</button>
+</div>
+
+<script>
+  // FUNCTION 1: show() - switches between screens
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0, 0);
+    // If home screen is shown, refresh the map size
+    if (id === 'home' && map) { setTimeout(() => map.invalidateSize(), 200); }
+  }
+
+  // FUNCTION 2: setRole() - switches between Seeker and Host
+  var role = 'seeker';
+  function setRole(r) {
+    role = r;
+    document.getElementById('seekerBtn').classList.toggle('active', r === 'seeker');
+    document.getElementById('hostBtn').classList.toggle('active', r === 'host');
+  }
+
+  // FUNCTION 3: login() - validates and navigates
+  function login() {
+    var email = document.getElementById('emailInput').value;
+    var pass  = document.getElementById('passInput').value;
+    if (!email || !pass) { alert('Please enter email and password!'); return; }
+    show(role === 'host' ? 'host' : 'home');
+  }
+
+  // FUNCTION 4: setFilter() - highlights selected filter
+  function setFilter(btn) {
+    document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // FUNCTION 5: setTime() - selects a time slot
+  function setTime(el) {
+    if (el.classList.contains('taken')) return;
+    document.querySelectorAll('.time-slot').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // FUNCTION 6: setDur() - selects duration
+  function setDur(el) {
+    document.querySelectorAll('.dur-btn').forEach(d => d.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // FUNCTION 7: setPay() - selects payment method
+  function setPay(el) {
+    document.querySelectorAll('.pay-option').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  // Set today's date
+  document.getElementById('dateInput').valueAsDate = new Date();
+
+  // MAP SETUP - runs after full page loads
+  var map;
+  window.onload = function() {
+    map = L.map('map').setView([13.0827, 80.2707], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+    var spots = [
+      { lat: 13.0418, lng: 80.2341, name: "Ravi's Home Spot", price: "₹15/hr" },
+      { lat: 13.0569, lng: 80.2425, name: "Priya's Driveway",  price: "₹10/hr" },
+      { lat: 13.0339, lng: 80.2676, name: "Kumar's Garage",    price: "₹12/hr" }
+    ];
+    spots.forEach(function(spot) {
+      L.marker([spot.lat, spot.lng]).addTo(map)
+        .bindPopup('<b>' + spot.name + '</b><br/>' + spot.price);
+    });
+  };
+</script>
+</body>
+</html>
